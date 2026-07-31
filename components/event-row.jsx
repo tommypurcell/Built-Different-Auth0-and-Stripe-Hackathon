@@ -22,9 +22,17 @@ export function EventRow({ event }) {
         <div className="text-sm text-muted-foreground">{event.host}</div>
       </div>
       <div
-        className="size-16 shrink-0 rounded-xl"
+        className="relative size-16 shrink-0 overflow-hidden rounded-xl"
         style={{ background: event.coverColor }}
-      />
+      >
+        {event.coverImage ? (
+          <img
+            src={event.coverImage}
+            alt=""
+            className="absolute inset-0 size-full object-cover"
+          />
+        ) : null}
+      </div>
     </Link>
   );
 }

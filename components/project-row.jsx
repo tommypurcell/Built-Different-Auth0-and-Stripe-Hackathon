@@ -11,7 +11,15 @@ export function ProjectRow({ project }) {
         className="relative size-20 shrink-0 overflow-hidden rounded-[24px]"
         style={{ background: project.coverColor }}
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.4),transparent_58%)]" />
+        {project.coverImage ? (
+          <img
+            src={project.coverImage}
+            alt=""
+            className="absolute inset-0 size-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.4),transparent_58%)]" />
+        )}
       </div>
       <div className="flex min-w-0 flex-col gap-1.5">
         <div className="truncate text-base font-semibold tracking-tight">
