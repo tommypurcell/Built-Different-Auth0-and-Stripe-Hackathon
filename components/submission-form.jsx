@@ -1,26 +1,65 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { createSubmission } from "@/lib/storage";
+import { createSubmission, getEvents } from "@/lib/storage";
 
 export function SubmissionForm() {
   const [name, setName] = useState("");
   const [productUrl, setProductUrl] = useState("");
   const [instructions, setInstructions] = useState("");
+  const [eventId, setEventId] = useState("");
+  const [events, setEvents] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submission, setSubmission] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    getEvents().then((nextEvents) => {
+      setEvents(nextEvents);
+      setEventId((current) => current || nextEvents[0]?.id || "");
+    });
+  }, []);
+
+  useEffect(() => {
+    const sessionId = new URLSearchParams(window.location.search).get("checkout_session_id");
+    if (!sessionId || sessionStorage.getItem(`checkout:${sessionId}`)) return;
+    sessionStorage.setItem(`checkout:${sessionId}`, "processing");
+    fetch(`/api/stripe/verify?session_id=${encodeURIComponent(sessionId)}`)
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Payment verification failed.");
+        return createSubmission(result.submission);
+      })
+      .then(setSubmission)
+      .catch((verificationError) => {
+        sessionStorage.removeItem(`checkout:${sessionId}`);
+        setError(verificationError.message);
+      });
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
-    const record = await createSubmission({ name, productUrl, instructions });
-    setSubmission(record);
-    setSubmitting(false);
+    setError("");
+    const selectedEvent = events.find((event) => event.id === eventId);
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, productUrl, instructions, eventId, eventName: selectedEvent?.name }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to start payment.");
+      window.location.assign(result.url);
+    } catch (submitError) {
+      setError(submitError.message);
+      setSubmitting(false);
+    }
   }
 
   if (submission) {
@@ -85,6 +124,18 @@ export function SubmissionForm() {
       </div>
 
       <div className="flex flex-col gap-2">
+        <Label htmlFor="event">Event</Label>
+        <select
+          id="event"
+          value={eventId}
+          onChange={(e) => setEventId(e.target.value)}
+          required
+          className="h-12 w-full rounded-2xl border border-border-strong bg-white px-4 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+        >
+          {events.map((event) => <option key={event.id} value={event.id}>{event.name}</option>)}
+        </select>
+      </div>
+      <div className="flex flex-col gap-2">
         <Label htmlFor="name">Project name</Label>
         <Input
           id="name"
@@ -92,7 +143,7 @@ export function SubmissionForm() {
           onChange={(e) => setName(e.target.value)}
           required
           placeholder="Built Different HQ"
-          className="h-12 rounded-2xl border-white bg-neutral-100/80 shadow-none"
+          className="h-12 rounded-2xl border-border-strong bg-white px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(17,24,39,0.04)]"
         />
       </div>
       <div className="flex flex-col gap-2">
@@ -104,7 +155,7 @@ export function SubmissionForm() {
           value={productUrl}
           onChange={(e) => setProductUrl(e.target.value)}
           required
-          className="h-12 rounded-2xl border-white bg-neutral-100/80 shadow-none"
+          className="h-12 rounded-2xl border-border-strong bg-white px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(17,24,39,0.04)]"
         />
       </div>
       <div className="flex flex-col gap-2">
@@ -115,7 +166,7 @@ export function SubmissionForm() {
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
           placeholder="Tell judges exactly where to click, which account to use, and what product moment sells the idea fastest."
-          className="rounded-[24px] border-white bg-neutral-100/80 shadow-none"
+          className="rounded-[24px] border-border-strong bg-white px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(17,24,39,0.04)]"
         />
       </div>
       <Button
@@ -123,8 +174,10 @@ export function SubmissionForm() {
         disabled={submitting}
         className="h-12 self-start rounded-full px-6"
       >
-        {submitting ? "Submitting..." : "Submit Project"}
+        {submitting ? "Opening checkout..." : "Pay $5 and submit"}
       </Button>
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      <p className="text-xs text-muted-foreground">One-time submission fee. Secure payment powered by Stripe.</p>
     </form>
   );
 }
