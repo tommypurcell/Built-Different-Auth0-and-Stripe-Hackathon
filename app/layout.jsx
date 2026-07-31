@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Header } from "@/components/header";
 import { auth0 } from "@/lib/auth0";
@@ -29,17 +30,15 @@ export default async function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (() => {
-                const stored = localStorage.getItem("hackathon-judge-theme");
-                const theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-                document.documentElement.classList.toggle("dark", theme === "dark");
-              })();
-            `,
-          }}
-        />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`
+            (() => {
+              const stored = localStorage.getItem("hackathon-judge-theme");
+              const theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+              document.documentElement.classList.toggle("dark", theme === "dark");
+            })();
+          `}
+        </Script>
         <Header user={user} />
         <main className="flex-1">{children}</main>
       </body>
