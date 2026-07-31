@@ -17,11 +17,11 @@ export function Header({ user = null }) {
             />
           </span>
           <span className="flex flex-col">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.24em] text-neutral-600">
-              Built Different
+            <span className="text-3xl font-medium uppercase tracking-[0.24em] text-neutral-600">
+              Spartacus
             </span>
             <span className="text-[15px] font-semibold tracking-tight text-foreground">
-              Hackathon Judge
+
             </span>
           </span>
         </Link>
